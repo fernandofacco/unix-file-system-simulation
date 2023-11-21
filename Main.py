@@ -24,10 +24,6 @@ if __name__ == "__main__":
 
     atexit.register(exitHandler)
 
-    flags = "u=rx"
-    parts = re.split('=|\+|-', flags)
-    print(flags[1])
-
     while True:
         userInput = input(fileSystem.currentDirectory + ": ")
         inputParts = userInput.split()
