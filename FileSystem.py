@@ -1,4 +1,5 @@
 from Inode import Inode
+from User import User
 from colorama import Fore, Style
 from datetime import datetime
 import re
@@ -7,18 +8,17 @@ class FileSystem:
     def __init__(self, maxBlocks):
         self.maxBlocks = maxBlocks
         self.blocks = [b'\0' * 512] * maxBlocks
-        self.inodes = {}
+        self.inodes = {} # Dictionary that stores path and inode. Example: {('/', <Inode.Inode object at ...) ('/teste', <Inode.Inode object at ...>)}
         self.rootDirectory = "/"
-        self.mkdir(self.rootDirectory) # Create directory and Inode for root
         self.currentDirectory = self.rootDirectory
-        self.users = {"admin": 0}
+        self.users = []
+        self.currentUserId = None
+        self.currentUsername = None
+        self.adduser("root", "1234", "0")
+        self.mkdir(self.rootDirectory) # Create directory and Inode for root
 
     def formata(self):
-        self.blocks = [b'\0' * 512] * self.maxBlocks
-        self.inodes = {}
-        self.rootDirectory = "/"
-        self.currentDirectory = self.rootDirectory
-        self.users = {"admin": 0}
+        self.__init__(self.maxBlocks)
 
     def touch(self, fileName):
         filePath = self.getFileOrDirectoryPath(fileName)
@@ -28,7 +28,7 @@ class FileSystem:
             self.inodes[filePath].lastModifiedDate = datetime.now()
         else:
             # Create new Inode for a new File
-            newInode = Inode(123, False)
+            newInode = Inode(self.currentUserId, False)
             self.inodes[filePath] = newInode
 
     def gravar_conteudo(self, name, position, nbytes, buffer):
@@ -49,9 +49,25 @@ class FileSystem:
         else:
             print("No such file or directory.")
 
-    def chown(self, user1, user2, arquivo):
-        # Altera o proprietário de um arquivo ou diretório
-        pass
+    def chown(self, newOwnerName, fileDirectoryName):
+        newOwner = self.getUser(newOwnerName)
+        if (newOwner == None):
+            print("User with specified username not found.")
+            return
+        
+        fileDirectoryPath = self.getFileOrDirectoryPath(fileDirectoryName)
+        if (fileDirectoryPath in self.inodes):
+                # Change inode owner
+                inode = self.inodes.get(fileDirectoryPath)
+                inode.ownerId = newOwner.userId
+        else:
+            print("No such file or directory.")
+
+    def getUser(self, username):
+        for user in self.users:
+            if (user.username == username):
+                return user
+        return None
 
     def chmod(self, fileDirectoryName, flags):
         fileDirectoryPath = self.getFileOrDirectoryPath(fileDirectoryName)
@@ -69,17 +85,21 @@ class FileSystem:
                     action = flags[1]
                     permissionParts = re.split('=|\+|-', part)
                     permission = permissionParts[2]
-
-                    
-            
-
         else:
             print("No such file or directory.")
 
     def mkdir(self, directoryName):
-        newInode = Inode(0, True)
+        newInode = self.createInode()
         directoryPath = self.getFileOrDirectoryPath(directoryName)
         self.inodes[directoryPath] = newInode
+
+    # Return created inode with current user id or root id
+    def createInode(self):
+        if (self.currentUserId != None):
+            return Inode(self.currentUserId, True)
+        else:
+            # Root directory owned by root user Uid: 0
+            return Inode(0, True)
 
     def rmdir(self, directoryName):
         directoryPath = self.getFileOrDirectoryPath(directoryName)
@@ -93,6 +113,12 @@ class FileSystem:
                 print("Failed to remove '"+ directoryName +"': Not a directory.")
         else:
             print("No such file or directory.")
+    
+    def isEmpty(self, directoryPath):
+        for path, inode in self.inodes.items():
+            if path.startswith(directoryPath + "/"):
+                return False
+        return True
 
     def cd(self, changeToDirectoryName):
         directoryPath = self.getFileOrDirectoryPath(changeToDirectoryName)
@@ -125,37 +151,65 @@ class FileSystem:
 
             if (depthDirItem == depthCurrentDir and directoryFilePath.startswith(currentDirectoryPath)):
                 if (self.inodes[directoryFilePath].isDirectory):
+                    # If is a directory, text will be blue
                     print(Fore.BLUE + directoryFilePath.split("/")[-1], end = " ")
                     print(Style.RESET_ALL, end = "")
                 else:
                     print(directoryFilePath.split("/")[-1], end = " ")
         print()
 
-    def adduser(self, name, user_id):
-        # Adiciona um novo usuário
-        pass
+    def adduser(self, username, password, userId):
+        for user in self.users:
+            if (user.username == username):
+                print("User with this username already exists.")
+                return
+            if (user.userId == userId):
+                print("User with this id already exists.")
+                return
+        newUser = User(username, userId, password)
+        self.users.append(newUser)
 
-    def rmuser(self, name):
-        # Remove um usuário e todos os seus arquivos
-        pass
+        # Success message only printed when user is not root
+        if (userId != "0"):
+            print("User created with success.")
+
+    def rmuser(self, username):
+        for user in self.users:
+            if (user.username == username):
+                self.users.remove(user)
+                print("User removed with success.")
+                return
+        print("User with specified username not found.")
 
     def lsuser(self):
-        # Lista todos os usuários
-        pass
+        for user in self.users:
+            print(user.username + " Uid: " + user.userId)
+    
+    def login(self, username, password):
+        for user in self.users:
+            if (user.username == username):
+                if (user.password == password):
+                    self.currentUserId = user.userId
+                    self.currentUsername = user.username
+                    return
+                else:
+                    print("Wrong password.")
+                    return
+        print("User with specified username does not exist.")
 
+    def logout(self):
+        self.currentUserId = None
+        self.currentUsername = None
+
+    # Display file or directory status
     def stat(self, fileName):
         filePath = self.getFileOrDirectoryPath(fileName)
         if filePath in self.inodes:
             print("  File: " + fileName)
             print(self.inodes[filePath].inodeInfo())
 
-
-    def isEmpty(self, directoryPath):
-        for path, inode in self.inodes.items():
-            if path.startswith(directoryPath + "/"):
-                return False
-        return True
-
+    # Used to get file or directory full path by passing its name
+    # Example: if directoryFileName = "documents" and currentDirectory = "/home/usertest/", the file or directory full path will be /home/usertest/documents 
     def getFileOrDirectoryPath(self, directoryFileName):
         if (directoryFileName == "/"):
             return directoryFileName
