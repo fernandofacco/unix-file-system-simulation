@@ -18,6 +18,6 @@ class Inode:
 
     def inodeInfo(self):
         if (self.isDirectory):
-            return f"  Size: {self.size} Blocks: {self.blocks}        directory\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
+            return f"  Size: {self.size} Blocks: {self.blocks}        directory\n   Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
         else:
-            return f"  Size: {self.size} Blocks: {self.blocks}        file\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
+            return f"  Size: {self.size} Blocks: {self.blocks}        file\n   Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
