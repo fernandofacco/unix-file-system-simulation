@@ -1,7 +1,7 @@
 class Block:
-    def __init__(self):  
+    def __init__(self, blockSize):  
         self.data = ""
-        self.size = 512
+        self.size = blockSize
 
     def write(self, newData):
         self.data = newData
