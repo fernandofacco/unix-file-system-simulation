@@ -20,7 +20,7 @@ class Inode:
         if (self.isDirectory):
             return f"  Size: {self.size}               Blocks: {len(self.blocks)}               directory\nAccess: ({self.buildPermissionStringFormat()})    Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
         else:
-            return f"  Size: {self.size}               Blocks: {len(self.blocks)}               file\nAccess: ({self.buildPermissionStringFormat()})    Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
+            return f"  Size: {self.size}               Blocks: {len(self.blocks)}               {'regular file' if self.size != 0 else 'regular empty file'}\nAccess: ({self.buildPermissionStringFormat()})    Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
         
     def buildPermissionStringFormat(self):
         permissionString = "-"
