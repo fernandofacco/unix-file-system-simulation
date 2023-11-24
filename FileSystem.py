@@ -50,17 +50,19 @@ class FileSystem:
             bytesCount = len(bytesData)
 
             # Overwrite file blocks
-            inode.blocks = [] 
+            inode.blocks = [None] * 10 
             inode.size = bytesCount
-            self.blocks -= len(inode.blocks)
+            self.blocks -= inode.blockCount
+            inode.blockCount = 0
 
             # Write content in new blocks
             for byte in range(0, bytesCount, self.blockSize):
                 newBlock = Block(self.blockSize)
                 newBlock.write(bytesData[byte:byte + self.blockSize])
                 inode.blocks.append(newBlock)
+                inode.blockCount += 1
             
-            self.blocks += len(inode.blocks)
+            self.blocks += inode.blockCount
             inode.lastModifiedDate = datetime.now()
         else:
             print("File not found.")

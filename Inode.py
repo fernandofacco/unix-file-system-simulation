@@ -13,14 +13,15 @@ class Inode:
         }   
         self.isDirectory = isDirectory
         self.size = 0
-        self.blocks = []
-        self.indirect_block = None
+        self.blocks = [None] * 10
+        self.blockCount = 0
+        self.singleIndirectBlock = None
 
     def inodeInfo(self):
         if (self.isDirectory):
-            return f"  Size: {self.size}               Blocks: {len(self.blocks)}               directory\nAccess: ({self.buildPermissionStringFormat()})    Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
+            return f"  Size: {self.size}               Blocks: {self.blockCount}               directory\nAccess: ({self.buildPermissionStringFormat()})    Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
         else:
-            return f"  Size: {self.size}               Blocks: {len(self.blocks)}               {'regular file' if self.size != 0 else 'regular empty file'}\nAccess: ({self.buildPermissionStringFormat()})    Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
+            return f"  Size: {self.size}               Blocks: {self.blockCount}               {'regular file' if self.size != 0 else 'regular empty file'}\nAccess: ({self.buildPermissionStringFormat()})    Uid: {self.ownerId}\nAccess: {self.lastAccessedDate} \nModify: {self.lastModifiedDate} \n Birth: {self.createdDate}"
         
     def buildPermissionStringFormat(self):
         permissionString = "-"
