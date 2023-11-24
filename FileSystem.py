@@ -74,7 +74,7 @@ class FileSystem:
         if (self.currentUserId == inode.ownerId):
             if (inodePermissions["user"]["write"]):
                 return True
-        elif (inodePermissions["public"]["write"]):
+        elif (inodePermissions["other"]["write"]):
             return True
         return False
             
@@ -106,7 +106,7 @@ class FileSystem:
         if (self.currentUserId == inode.ownerId):
             if (inodePermissions["user"]["read"]):
                 return True
-        elif (inodePermissions["public"]["read"]):
+        elif (inodePermissions["other"]["read"]):
             return True
         return False
 
@@ -157,14 +157,14 @@ class FileSystem:
             # Transforms permissions string into a list with chars. Example: "754" -> ['7','5','4']
             permissionsChars = list(permissions) 
 
-            # Guarantee that chmod has permission to user, group and public (000 - three chars)
+            # Guarantee that chmod has permission to user, group and others (000 - three chars)
             for i in range (len(permissionsChars), 3, 1):
                 permissionsChars.append('0')
         
             # Get corresponding permissions from dictionary
             permissionUser = permissionsDictionary.get(permissionsChars[0])
             permissionGroup = permissionsDictionary.get(permissionsChars[1])
-            permissionPublic = permissionsDictionary.get(permissionsChars[2])
+            permissionOther = permissionsDictionary.get(permissionsChars[2])
 
             self.inodes[fileDirectoryPath].permissions["user"] = {
                 "read": permissionUser[0],
@@ -178,10 +178,10 @@ class FileSystem:
                 "execute": permissionGroup[2]
             }
 
-            self.inodes[fileDirectoryPath].permissions["public"] = {
-                "read": permissionPublic[0],
-                "write": permissionPublic[1],
-                "execute": permissionPublic[2]
+            self.inodes[fileDirectoryPath].permissions["other"] = {
+                "read": permissionOther[0],
+                "write": permissionOther[1],
+                "execute": permissionOther[2]
             }
         else:
             print("No such file or directory.")
@@ -331,8 +331,8 @@ class FileSystem:
         stringHelp += "\ncat 'fileName':\n    Displays the content of the specified file.\n"
         stringHelp += "\nrm 'fileName':\n    Removes the specified file.\n"
         stringHelp += "\nchown 'newOwnerName' 'fileOrDirectoryName':\n    Changes the owner of the file or directory to the specified user name.\n"
-        stringHelp += "\nchmod 'permissions' 'fileOrDirectoryName':\n    Changes the permissions of the file or directory using digits 4 (read), 2 (write), and 1 (execute) for owner, group, and public.\n"
-        stringHelp += "\n    Example: 'chmod 754 fileName123' sets read, write, and execute permissions for the owner (7), read and execute for the group (5), and read for the public (4).\n"
+        stringHelp += "\nchmod 'permissions' 'fileOrDirectoryName':\n    Changes the permissions of the file or directory using digits 4 (read), 2 (write), and 1 (execute) for owner, group, and others.\n"
+        stringHelp += "\n    Example: 'chmod 754 fileName123' sets read, write, and execute permissions for the owner (7), read and execute for the group (5), and read for the others (4).\n"
         stringHelp += "\nmkdir 'directoryName':\n    Creates a new directory with specified name.\n"
         stringHelp += "\nrmdir 'directoryName':\n    Removes the specified directory.\n"
         stringHelp += "\ncd 'directoryName':\n    Changes the current directory to the specified one.\n"

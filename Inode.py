@@ -9,7 +9,7 @@ class Inode:
         self.permissions = {
             "user": {"read": True, "write": True, "execute": False},
             "group": {"read": True, "write": False, "execute": False},
-            "public": {"read": True, "write": False, "execute": False},
+            "other": {"read": True, "write": False, "execute": False},
         }   
         self.isDirectory = isDirectory
         self.size = 0
