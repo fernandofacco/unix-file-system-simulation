@@ -1,7 +1,5 @@
 from FileSystem import FileSystem
 import atexit, pickle
-import re
-from Block import Block
 
 def saveFileSystemState(fileSystem):
     with open('FileSystem_State.pkl', 'wb') as file:

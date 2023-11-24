@@ -3,7 +3,6 @@ from User import User
 from Block import Block
 from colorama import Fore, Style
 from datetime import datetime
-import re
 
 class FileSystem:
     def __init__(self, maxBlocks):
@@ -94,7 +93,8 @@ class FileSystem:
 
             fileContent = ""
             for block in inode.blocks:
-                fileContent += block.read().decode('utf-8')
+                if (block != None):
+                    fileContent += block.read().decode('utf-8')
             print(fileContent)
         else:
             print("File not found.")
@@ -309,9 +309,11 @@ class FileSystem:
     # Display file or directory status
     def stat(self, fileName):
         filePath = self.getFileOrDirectoryPath(fileName)
-        if filePath in self.inodes:
+        if (filePath in self.inodes):
             print("  File: " + fileName)
             print(self.inodes[filePath].inodeInfo())
+        else:
+            print("No such file or directory.")
 
     # Used to get file or directory full path by passing its name
     # Example: if directoryFileName = "documents" and currentDirectory = "/home/usertest/", the file or directory full path will be /home/usertest/documents 
