@@ -1,5 +1,6 @@
 from Inode import Inode
 from User import User
+from Block import Block
 from colorama import Fore, Style
 from datetime import datetime
 import re
@@ -7,22 +8,23 @@ import re
 class FileSystem:
     def __init__(self, maxBlocks):
         self.maxBlocks = maxBlocks
-        self.blocks = [b'\0' * 512] * maxBlocks
+        self.blocks = 0  
+        self.blockSize = 512
         self.inodes = {} # Dictionary that stores path and inode. Example: {('/', <Inode.Inode object at ...) ('/teste', <Inode.Inode object at ...>)}
         self.rootDirectory = "/"
         self.currentDirectory = self.rootDirectory
         self.users = []
         self.currentUserId = None
         self.currentUsername = None
-        self.adduser("root", "1234", "0")
+        self.adduser("root", "1234", "0", True)
         self.mkdir(self.rootDirectory) # Create directory and Inode for root
 
-    def formata(self):
+    def format(self):
         self.__init__(self.maxBlocks)
 
     def touch(self, fileName):
         filePath = self.getFileOrDirectoryPath(fileName)
-        if filePath in self.inodes:
+        if (filePath in self.inodes):
             # Update dates
             self.inodes[filePath].lastAccessedDate = datetime.now()
             self.inodes[filePath].lastModifiedDate = datetime.now()
@@ -31,13 +33,82 @@ class FileSystem:
             newInode = Inode(self.currentUserId, False)
             self.inodes[filePath] = newInode
 
-    def gravar_conteudo(self, name, position, nbytes, buffer):
-        # Grava conteúdo em um arquivo
-        pass
+    def writeContent(self, fileName, data):
+        filePath = self.getFileOrDirectoryPath(fileName)
+        if (filePath in self.inodes):
+            inode = self.inodes.get(filePath)
+            if (inode.isDirectory):
+                print(fileName +" Is a directory.")
+                return
+            
+            if (not self.hasWritePermission(inode)):
+                print("User does not have permission to write file: " + fileName)
+                return
+            
+            # Transform content into bytes
+            bytesData = bytearray(data, 'utf-8')
+            bytesCount = len(bytesData)
 
-    def cat(self, name):
-        # Exibe o conteúdo de um arquivo
-        pass
+            # Overwrite file blocks
+            inode.blocks = [] 
+            inode.size = bytesCount
+            self.blocks -= len(inode.blocks)
+
+            # Write content in new blocks
+            for byte in range(0, bytesCount, self.blockSize):
+                newBlock = Block(self.blockSize)
+                newBlock.write(bytesData[byte:byte + self.blockSize])
+                inode.blocks.append(newBlock)
+            
+            self.blocks += len(inode.blocks)
+            inode.lastModifiedDate = datetime.now()
+        else:
+            print("File not found.")
+
+    def hasWritePermission(self, inode):
+        currentUser = self.getUser(self.currentUsername)
+        if (currentUser.isAdmin):
+            return True
+        
+        inodePermissions = inode.permissions
+        if (self.currentUserId == inode.ownerId):
+            if (inodePermissions["user"]["write"]):
+                return True
+        elif (inodePermissions["public"]["write"]):
+            return True
+        return False
+            
+    def cat(self, fileName):
+        filePath = self.getFileOrDirectoryPath(fileName)
+        if (filePath in self.inodes):
+            inode = self.inodes.get(filePath)
+            if (inode.isDirectory):
+                print(fileName +" Is a directory.")
+                return
+            
+            if (not self.hasReadPermission(inode)):
+                print("User does not have permission to read file: " + fileName)
+                return
+
+            fileContent = ""
+            for block in inode.blocks:
+                fileContent += block.read().decode('utf-8')
+            print(fileContent)
+        else:
+            print("File not found.")
+
+    def hasReadPermission(self, inode):
+        currentUser = self.getUser(self.currentUsername)
+        if (currentUser.isAdmin):
+            return True
+        
+        inodePermissions = inode.permissions
+        if (self.currentUserId == inode.ownerId):
+            if (inodePermissions["user"]["read"]):
+                return True
+        elif (inodePermissions["public"]["read"]):
+            return True
+        return False
 
     def rm(self, fileName):
         filePath = self.getFileOrDirectoryPath(fileName)
@@ -69,22 +140,49 @@ class FileSystem:
                 return user
         return None
 
-    def chmod(self, fileDirectoryName, flags):
+    def chmod(self, permissions, fileDirectoryName):
         fileDirectoryPath = self.getFileOrDirectoryPath(fileDirectoryName)
 
         if (fileDirectoryPath in self.inodes):
-            scopes = ['u', 'g', 'o']
-            actions = ['+', '-', '=']
-            permissions = ['r', 'w', 'x']
-                
-            if (isinstance(flags, str)):
-                flagsParts = flags.split(",")
+            permissionsDictionary = {
+                "0": [False, False, False], # ---
+                "1": [False, False, True],  # --x
+                "2": [False, True, False],  # -w-
+                "3": [False, True, True],   # -wx
+                "4": [True, False, False],  # r--
+                "5": [True, False, True],   # r-x
+                "6": [True, True, False],   # rw-
+                "7": [True, True, True]     # rwx
+            }
+            # Transforms permissions string into a list with chars. Example: "754" -> ['7','5','4']
+            permissionsChars = list(permissions) 
 
-                for part in flagsParts:
-                    scope = flags[0]
-                    action = flags[1]
-                    permissionParts = re.split('=|\+|-', part)
-                    permission = permissionParts[2]
+            # Guarantee that chmod has permission to user, group and public (000 - three chars)
+            for i in range (len(permissionsChars), 3, 1):
+                permissionsChars.append('0')
+        
+            # Get corresponding permissions from dictionary
+            permissionUser = permissionsDictionary.get(permissionsChars[0])
+            permissionGroup = permissionsDictionary.get(permissionsChars[1])
+            permissionPublic = permissionsDictionary.get(permissionsChars[2])
+
+            self.inodes[fileDirectoryPath].permissions["user"] = {
+                "read": permissionUser[0],
+                "write": permissionUser[1],
+                "execute": permissionUser[2]
+            }
+
+            self.inodes[fileDirectoryPath].permissions["group"] = {
+                "read": permissionGroup[0],
+                "write": permissionGroup[1],
+                "execute": permissionGroup[2]
+            }
+
+            self.inodes[fileDirectoryPath].permissions["public"] = {
+                "read": permissionPublic[0],
+                "write": permissionPublic[1],
+                "execute": permissionPublic[2]
+            }
         else:
             print("No such file or directory.")
 
@@ -158,7 +256,12 @@ class FileSystem:
                     print(directoryFilePath.split("/")[-1], end = " ")
         print()
 
-    def adduser(self, username, password, userId):
+    def adduser(self, username, password, userId, isAdmin):
+        currentUser = self.getUser(self.currentUsername)
+        if (currentUser != None and not currentUser.isAdmin):
+            print("Only administrator can add a new user")
+            return
+        
         for user in self.users:
             if (user.username == username):
                 print("User with this username already exists.")
@@ -166,7 +269,7 @@ class FileSystem:
             if (user.userId == userId):
                 print("User with this id already exists.")
                 return
-        newUser = User(username, userId, password)
+        newUser = User(username, userId, password, isAdmin)
         self.users.append(newUser)
 
         # Success message only printed when user is not root
@@ -219,3 +322,28 @@ class FileSystem:
         else:
             directoryPath = self.currentDirectory + "/" + directoryFileName
         return directoryPath
+    
+    def help(self):
+        stringHelp = "Commands:\n"
+        stringHelp += "\nformat:\n    Formats the file system, clearing all files, directories and users.\n"
+        stringHelp += "\ntouch 'fileName':\n    Creates a empty file or update the acceess and modification times to the current time.\n"
+        stringHelp += "\nwrite 'fileName' 'content':\n    Writes content into specified file.\n"
+        stringHelp += "\ncat 'fileName':\n    Displays the content of the specified file.\n"
+        stringHelp += "\nrm 'fileName':\n    Removes the specified file.\n"
+        stringHelp += "\nchown 'newOwnerName' 'fileOrDirectoryName':\n    Changes the owner of the file or directory to the specified user name.\n"
+        stringHelp += "\nchmod 'permissions' 'fileOrDirectoryName':\n    Changes the permissions of the file or directory using digits 4 (read), 2 (write), and 1 (execute) for owner, group, and public.\n"
+        stringHelp += "\n    Example: 'chmod 754 fileName123' sets read, write, and execute permissions for the owner (7), read and execute for the group (5), and read for the public (4).\n"
+        stringHelp += "\nmkdir 'directoryName':\n    Creates a new directory with specified name.\n"
+        stringHelp += "\nrmdir 'directoryName':\n    Removes the specified directory.\n"
+        stringHelp += "\ncd 'directoryName':\n    Changes the current directory to the specified one.\n"
+        stringHelp += "\nls:\n    Lists files and directories in the current directory.\n"
+        stringHelp += "\nadduser 'username' 'password' 'userId':\n    Adds a new user with the specified username, password and user ID.\n"
+        stringHelp += "\nrmuser 'username':\n    Removes a user with the specified username.\n"
+        stringHelp += "\nlsuser:\n    Lists all users.\n"
+        stringHelp += "\nlogin 'username' 'password':\n    Logs into the system with the specified username and password.\n"
+        stringHelp += "\nlogout:\n    Logs out current user from the system.\n"
+        stringHelp += "\nstat 'fileOrDirectoryName':\n    Display information about the specified file or directory, such as owner ID, permissions, size and dates\n"
+
+        print(stringHelp)
+
+    
