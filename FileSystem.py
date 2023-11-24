@@ -56,10 +56,16 @@ class FileSystem:
 
             # Write content in new blocks
             for byte in range(0, bytesCount, self.blockSize):
+                inode.blockCount += 1
+                if (inode.blockCount > 10):
+                    print ("Content exceeds 10 blocks of " + str(self.blockSize) + " bytes each.")
+                    inode.blockCount = 0
+                    inode.blocks = [None] * 10 
+                    break
+
                 newBlock = Block(self.blockSize)
                 newBlock.write(bytesData[byte:byte + self.blockSize])
                 inode.blocks.append(newBlock)
-                inode.blockCount += 1
             
             self.blocks += inode.blockCount
             inode.lastModifiedDate = datetime.now()
@@ -196,6 +202,9 @@ class FileSystem:
                 return
             
         newInode = self.createInode()
+        newInode.blocks.append(Block(self.blockSize))
+        newInode.blockCount += 1
+        self.blocks += 1
         self.inodes[directoryPath] = newInode
 
     # Return created inode with current user id or root id
@@ -209,8 +218,10 @@ class FileSystem:
     def rmdir(self, directoryName):
         directoryPath = self.getFileOrDirectoryPath(directoryName)
         if (directoryPath in self.inodes):
-            if (self.inodes[directoryPath].isDirectory):
+            inode = self.inodes[directoryPath]
+            if (inode.isDirectory):
                 if (self.isEmpty(directoryPath)):
+                    self.blocks -= inode.blockCount
                     self.inodes.pop(directoryPath)
                 else:
                     print("Failed to remove '"+ directoryName +"': Directory not empty.")
@@ -363,5 +374,3 @@ class FileSystem:
         stringHelp += "\nstat 'fileOrDirectoryName':\n    Display information about the specified file or directory, such as owner ID, permissions, size and dates\n"
 
         print(stringHelp)
-
-    
