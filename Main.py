@@ -1,30 +1,7 @@
 from FileSystem import FileSystem
-import atexit, pickle
-
-def saveFileSystemState(fileSystem):
-    with open('FileSystem_State.pkl', 'wb') as file:
-        pickle.dump(fileSystem, file)
-    print("File system state saved.")
-
-def loadFileSystemState():
-    try:
-        with open('FileSystem_State.pkl', 'rb') as file:
-            return pickle.load(file)
-    except FileNotFoundError:
-        return None
 
 if __name__ == "__main__":
-    fileSystem = loadFileSystemState()
-    
-    if fileSystem is None:
-        fileSystem = FileSystem(65536) # Maximum block count
-    
-    def exitHandler():
-        fileSystem.logout()
-        saveFileSystemState(fileSystem)
-
-
-    #atexit.register(exitHandler)
+    fileSystem = FileSystem(65536) # Maximum block count
 
     commandsDictionary = {
         "format": lambda fileSystem, _: fileSystem.format(),
