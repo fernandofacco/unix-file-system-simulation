@@ -19,7 +19,7 @@ if __name__ == "__main__":
     fileSystem = loadFileSystemState()
     
     if fileSystem is None:
-        fileSystem = FileSystem(1000)
+        fileSystem = FileSystem(65536) # Maximum block count
     
     def exitHandler():
         fileSystem.logout()
