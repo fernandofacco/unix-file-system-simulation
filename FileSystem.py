@@ -10,13 +10,13 @@ class FileSystem:
         self.blocks = 0  
         self.blockSize = 512
         self.inodes = {} # Dictionary that stores path and inode. Example: {('/', <Inode.Inode object at ...) ('/teste', <Inode.Inode object at ...>)}
-        self.rootDirectory = "/"
-        self.currentDirectory = self.rootDirectory
+        self.rootDirectoryPath = "/"
+        self.currentDirectory = self.rootDirectoryPath
         self.users = []
         self.currentUserId = None
         self.currentUsername = None
         self.adduser("root", "1234", "0", True)
-        self.mkdir(self.rootDirectory) # Create directory and Inode for root
+        self.mkdir(self.rootDirectoryPath) # Create directory and Inode for root
 
     def format(self):
         self.__init__(self.maxBlocks)
@@ -189,8 +189,13 @@ class FileSystem:
             print("No such file or directory.")
 
     def mkdir(self, directoryName):
-        newInode = self.createInode()
         directoryPath = self.getFileOrDirectoryPath(directoryName)
+        if (directoryPath in self.inodes):
+            if (self.inodes[directoryPath].isDirectory):
+                print ("Failed to create directory '" + directoryName + "': Directory already exists.")
+                return
+            
+        newInode = self.createInode()
         self.inodes[directoryPath] = newInode
 
     # Return created inode with current user id or root id
@@ -279,6 +284,15 @@ class FileSystem:
             print("User created with success.")
 
     def rmuser(self, username):
+        currentUser = self.getUser(self.currentUsername)
+        if (currentUser != None and not currentUser.isAdmin):
+            print("Only administrator can remove a user")
+            return
+        
+        if (username == "root"):
+            print("Root user can not be removed.")
+            return
+
         for user in self.users:
             if (user.username == username):
                 self.users.remove(user)
